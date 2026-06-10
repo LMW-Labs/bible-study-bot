@@ -24,7 +24,7 @@ export default async function handler(req, res) {
 
   // 2. Verify Telegram's secret header so randoms can't hit the endpoint.
   const secret = req.headers["x-telegram-bot-api-secret-token"];
-  if (secret !== process.env.TELEGRAM_WEBHOOK_SECRET) {
+  if (process.env.TELEGRAM_WEBHOOK_SECRET && secret !== process.env.TELEGRAM_WEBHOOK_SECRET) {
     return res.status(401).send("unauthorized");
   }
 
