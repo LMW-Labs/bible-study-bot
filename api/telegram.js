@@ -81,9 +81,10 @@ export default async function handler(req, res) {
 
     await sendDocument(chatId, pdf, filename, "Here's your formatted study 📖");
   } catch (err) {
-    console.log("ERROR name:", err.name);
-    console.log("ERROR message:", err.message);
-    await sendMessage(chatId, `DEBUG ERROR: ${err.message}`);
+    console.error("ERROR name:", err.name);
+    console.error("ERROR message:", err.message);
+    console.error("ERROR stack:", err.stack);
+    await sendMessage(chatId, "Sorry, something went wrong generating your PDF. Please try again in a moment.");
   }
 
   return res.status(200).send("ok");
