@@ -1,3 +1,4 @@
+import { waitUntil } from "@vercel/functions";
 import { parseMessage, notesToHtml } from "../lib/claude.js";
 import { htmlToPdf } from "../lib/pdf.js";
 import { sendMessage, sendDocument } from "../lib/telegram.js";
@@ -65,14 +66,24 @@ export default async function handler(req, res) {
     return res.status(200).send("ok");
   }
 
-  // 5. Acknowledge immediately (the heavy work follows in the same invocation).
+  // 5. Respond to Telegram's webhook right away. The Claude call + Chromium
+  // render + file upload can take well over Telegram's own retry window;
+  // holding the HTTP response open for all of that made Telegram treat the
+  // update as failed and redeliver the same message on its own. Acknowledge
+  // now and keep doing the heavy work in the background via waitUntil —
+  // Fluid Compute keeps the invocation alive for it past the response.
+  res.status(200).send("ok");
+  waitUntil(formatAndSend(chatId, text));
+}
+
+async function formatAndSend(chatId, text) {
   await sendMessage(chatId, "Got it — formatting your notes into a PDF. This takes 20–40 seconds…");
 
   try {
     const { style, notes } = parseMessage(text);
     if (!notes) {
       await sendMessage(chatId, "I didn't find any notes in that message. Send the study text and I'll format it.");
-      return res.status(200).send("ok");
+      return;
     }
 
     const html = await notesToHtml(notes, style);
@@ -86,6 +97,4 @@ export default async function handler(req, res) {
     console.error("ERROR stack:", err.stack);
     await sendMessage(chatId, "Sorry, something went wrong generating your PDF. Please try again in a moment.");
   }
-
-  return res.status(200).send("ok");
 }
